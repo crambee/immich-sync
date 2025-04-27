@@ -1,12 +1,14 @@
 [project]
 name = "immich-sync"
 version = "0.1.0"
-description = "Simple immich sync utility"
+description = "Simple Immich sync utility"
 readme = "README.md"
 authors = [
     { name = "crambee", email = "crambeen@gmail.com" }
 ]
+license = "GPL-3.0-only"
 requires-python = ">=3.9"
+
 dependencies = [
     "aiohttp",
     "tqdm",
@@ -26,3 +28,7 @@ immich-sync = "immich_sync.cli:main"
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[project.urls]
+Homepage = "https://github.com/crambee/immich-sync"
+Issues = "https://github.com/crambee/immich-sync/issues"
