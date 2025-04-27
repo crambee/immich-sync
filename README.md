@@ -1,7 +1,6 @@
 # immich-sync
 
-+> **Acknowledgements:**
-+> Thanks to [@markeeisner](https://github.com/markeeisner) for the initial script that inspired this tool (see the discussion at https://github.com/immich-app/immich/discussions/7735 and his original script at https://git.orenit.solutions/open/immichalbumpull).
+> **Acknowledgements:** Thanks to [@markeeisner](https://github.com/markeeisner) for the initial script that inspired this tool (see the discussion at https://github.com/immich-app/immich/discussions/7735 and his original script at https://git.orenit.solutions/open/immichalbumpull).
 
 `immich-sync` is a simple Python CLI tool for synchronizing photos from an [Immich](https://immich.dev/) server to a local directory. It supports album selection, checksum-based incremental downloads, and optional RAW thumbnail extraction.
 
