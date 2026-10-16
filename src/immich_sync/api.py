@@ -22,6 +22,29 @@ class ImmichAPI:
             r.raise_for_status()
             return await r.json()
 
+    async def get_album_assets(
+        self,
+        session: aiohttp.ClientSession,
+        album_id: str,
+        page_size: int = 1000,
+    ):
+        # Newer Immich API: the album endpoint no longer embeds its assets;
+        # list them via the search endpoint (max 1000 per page).
+        assets = []
+        page = 1
+        while True:
+            url = f"{self.base_url}/api/search/metadata"
+            payload = {"albumIds": [album_id], "page": page, "size": page_size}
+            async with session.post(url, json=payload, headers=self.headers_json) as r:
+                r.raise_for_status()
+                data = await r.json()
+            items = data.get("assets", {}).get("items", [])
+            assets.extend(items)
+            if len(items) < page_size:
+                break
+            page += 1
+        return assets
+
     async def fetch_asset_info(
         self,
         session: aiohttp.ClientSession,

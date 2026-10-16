@@ -3,13 +3,12 @@ import base64
 from pathlib import Path
 
 
-def delete_orphans(photodir: Path, valid_ids: list[str]):
+def delete_orphans(photodir: Path, valid_names: set[str]):
     """
-    Remove any file in photodir whose stem (filename without extension)
-    is not in valid_ids.
+    Remove any file in photodir whose name is not in valid_names.
     """
     for f in photodir.iterdir():
-        if f.is_file() and f.stem not in valid_ids:
+        if f.is_file() and f.name not in valid_names:
             f.unlink()
 
 

@@ -45,6 +45,7 @@ imagedir = /path/to/photos
 album = Vacation 2024
 # Download from RAW files? (true/false)
 raw = true
+naming = description
 ```
 
 ### Command-line overrides
@@ -77,6 +78,7 @@ immich-sync \
   --imagedir /path/to/photos \
   --album "Vacation 2024" \
   --raw
+  --naming [description,original,id]
 ```
 
 > **Note:** By default the tool will parse any file named `config.ini` in the current working directory.

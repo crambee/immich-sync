@@ -16,6 +16,7 @@ class Config:
     photodir: Path
     album: str
     raw: bool
+    naming: str = "description"
 
 
 def load_config(path: str) -> Config:
@@ -71,10 +72,17 @@ def load_config(path: str) -> Config:
     except ValueError:
         raise ConfigError("Invalid boolean value for 'raw'; expected true or false.")
 
+    naming = sec.get("naming", "description").strip()
+    if naming not in ("description", "original", "id"):
+        raise ConfigError(
+            "Invalid 'naming'; expected description, original or id."
+        )
+
     return Config(
         url=url,
         apikey=apikey,
         photodir=dest,
         album=album,
         raw=raw,
+        naming=naming,
     )

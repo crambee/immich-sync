@@ -6,6 +6,29 @@ from .api import ImmichAPI
 from .utils import delete_orphans, compute_checksum
 
 
+def _file_name(aid: str, desc: str, orig: str, used: set, naming: str) -> str:
+    """Name files per `naming`, falling down to the asset id (unique).
+
+    naming: "description" | "original" | "id" — the first name tried, in
+    order description > originalFileName > asset id.
+
+    shortcut: 60-char cap on the description; it fits ext4's 255-byte
+    limit even for 4-byte chars. Raise if you need longer captions.
+    """
+    ext = Path(orig).suffix
+    line = desc.splitlines()[0].strip().replace("/", "-")[:60].lstrip(".") if desc else ""
+    order = []
+    if naming == "description" and line:
+        order.append(f"{line}{ext}")
+    if naming in ("description", "original") and Path(orig).name:
+        order.append(Path(orig).name)
+    order.append(f"{aid}{ext}")
+    for cand in order:
+        if cand not in used:
+            used.add(cand)
+            return cand
+
+
 async def _run(cfg):
     api = ImmichAPI(cfg.url, cfg.apikey)
     photodir = cfg.photodir
@@ -22,8 +45,13 @@ async def _run(cfg):
         album_id = str(album["id"])
 
         # 2. list assets
+        # Newer Immich API: the album no longer embeds its assets, so fetch
+        # them from the search endpoint instead.
         album_data = await api.get_album(session, album_id)
-        assets = album_data.get("assets", [])
+        if "assets" in album_data:
+            assets = album_data["assets"]
+        else:
+            assets = await api.get_album_assets(session, album_id)
 
         # 3. fetch metadata
         tasks_info = [api.fetch_asset_info(session, str(a["id"]), sem) for a in assets]
@@ -41,6 +69,8 @@ async def _run(cfg):
         done_bytes = 0
         to_download = []
         done_ids = []
+        used_names = set()
+        keep_names = set()
 
         with tqdm(
             total=len(assetinfos), desc="Processing Checksums", unit="asset"
@@ -53,8 +83,11 @@ async def _run(cfg):
                 total_bytes += size
 
                 orig = info.get("originalFileName", "")
-                ext = Path(orig).suffix
-                dest = photodir / f"{aid}{ext}"
+                desc = (info.get("exifInfo") or {}).get("description") or ""
+                dest = photodir / _file_name(aid, desc, orig, used_names, cfg.naming)
+                keep_names.add(dest.name)
+                if cfg.raw and dest.suffix.lower() != ".jpg":
+                    keep_names.add(dest.with_suffix(".jpg").name)
 
                 if dest.exists():
                     try:
@@ -66,7 +99,7 @@ async def _run(cfg):
                     except Exception:
                         pass
 
-                to_download.append(info)
+                to_download.append((info, dest))
                 p.update(1)
 
         # 5. download loop
@@ -79,12 +112,9 @@ async def _run(cfg):
             bar_format="{desc}: {percentage:3.0f}%|{bar}| {n_fmt}/{total_fmt} [{elapsed}<{remaining}, {rate_fmt}]",
         )
 
-        async def process(info):
+        async def process(info, dest):
             aid = str(info["id"])
-            orig = info.get("originalFileName", "")
-            ext = Path(orig).suffix
-            dest = photodir / f"{aid}{ext}"
-            temp = photodir / f"{aid}{ext}.part"
+            temp = dest.with_name(dest.name + ".part")
             if temp.exists():
                 temp.unlink()
 
@@ -100,7 +130,7 @@ async def _run(cfg):
                             total=total,
                             unit="B",
                             unit_scale=True,
-                            desc=f"Downloading {aid}{ext}",
+                            desc=f"Downloading {dest.name}",
                             leave=False,
                         ) as pbar:
                             with temp.open("wb") as f:
@@ -126,7 +156,7 @@ async def _run(cfg):
 
                     with rawpy.imread(str(dest)) as raw_img:
                         thumb = raw_img.extract_thumb()
-                        jpg = photodir / f"{aid}.jpg"
+                        jpg = dest.with_suffix(".jpg")
                         if thumb.format == rawpy.ThumbFormat.JPEG:
                             with jpg.open("wb") as f:
                                 f.write(thumb.data)
@@ -137,10 +167,12 @@ async def _run(cfg):
 
             return aid
 
-        downloaded = done_ids + await asyncio.gather(*(process(i) for i in to_download))
+        downloaded = done_ids + await asyncio.gather(
+            *(process(i, d) for i, d in to_download)
+        )
         overall.close()
 
-    delete_orphans(photodir, downloaded)
+    delete_orphans(photodir, keep_names)
     return downloaded
 
 

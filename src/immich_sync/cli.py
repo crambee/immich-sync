@@ -20,7 +20,13 @@ from .downloader import sync_album
     default=None,
     help="Extract RAW thumbnails? Overrides config if set.",
 )
-def main(config, url, apikey, photodir, album, raw):
+@click.option(
+    "--naming",
+    type=click.Choice(["description", "original", "id"]),
+    default=None,
+    help="Name files by asset description, originalFileName or id (config default).",
+)
+def main(config, url, apikey, photodir, album, raw, naming):
     """
     Sync an Immich album to a local directory.
     You can either supply a config.ini file, or pass everything on the CLI.
@@ -42,6 +48,7 @@ def main(config, url, apikey, photodir, album, raw):
         "photodir": Path(photodir) if photodir else (base.photodir if base else None),
         "album": album or (base.album if base else None),
         "raw": raw if raw is not None else (base.raw if base else False),
+        "naming": naming or (base.naming if base else "description"),
     }
 
     # 3) Make sure we have everything we need.
